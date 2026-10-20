@@ -43,13 +43,75 @@ export function highlightXml(text: string): ReactNode[] {
   return out;
 }
 
+type Lang = { comment: string; keywords: string };
+const kw = (w: string) => `\\b(?:${w.split(' ').join('|')})\\b`;
+const HASH_COMMENT = '#[^\\n]*';
+const LANGS = {
+  cpp: {
+    comment: '\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/|^[ \\t]*#[ \\t]*\\w+',
+    keywords: kw('auto bool break case catch char class const constexpr continue default delete do double else enum explicit extern false float for if include inline int long namespace new nullptr operator override private protected public return short signed sizeof static struct switch template this throw true try typedef typename union unsigned using virtual void volatile while'),
+  },
+  py: {
+    comment: HASH_COMMENT,
+    keywords: kw('and as assert async await break class continue def del elif else except False finally for from global if import in is lambda None nonlocal not or pass raise return True try while with yield self'),
+  },
+  yaml: { comment: HASH_COMMENT, keywords: kw('true false null yes no') },
+  cmake: {
+    comment: HASH_COMMENT,
+    keywords: kw('if else elseif endif foreach endforeach function endfunction macro endmacro while endwhile return set project cmake_minimum_required find_package add_executable add_library catkin_package catkin_python_setup target_link_libraries include_directories install add_dependencies add_message_files add_service_files generate_messages'),
+  },
+  json: { comment: '\\/\\/[^\\n]*', keywords: kw('true false null') },
+  msg: { comment: HASH_COMMENT, keywords: kw('bool int8 uint8 int16 uint16 int32 uint32 int64 uint64 float32 float64 string time duration char byte Header') },
+} satisfies Record<string, Lang>;
+
+function langFor(name: string): Lang | undefined {
+  const n = name.toLowerCase();
+  if (/\.(c|cc|cpp|cxx|h|hh|hpp|hxx|cu)$/.test(n)) return LANGS.cpp;
+  if (/\.pyi?$/.test(n)) return LANGS.py;
+  if (/\.(ya?ml|rviz)$/.test(n)) return LANGS.yaml;
+  if (/(^|\/)cmakelists\.txt$|\.cmake$/.test(n)) return LANGS.cmake;
+  if (/\.jsonc?$/.test(n)) return LANGS.json;
+  if (/\.(msg|srv|action)$/.test(n)) return LANGS.msg;
+  return undefined;
+}
+
+const STRING = '"""[\\s\\S]*?"""|\'\'\'[\\s\\S]*?\'\'\'|"(?:[^"\\\\\\n]|\\\\.)*"|\'(?:[^\'\\\\\\n]|\\\\.)*\'';
+const tokenCache = new Map<Lang, RegExp>();
+function tokenRe(lang: Lang): RegExp {
+  let re = tokenCache.get(lang);
+  if (!re) {
+    re = new RegExp(`(${lang.comment})|(${STRING})|(${lang.keywords})|(\\b\\d[\\w.]*\\b)`, 'gm');
+    tokenCache.set(lang, re);
+  }
+  return re;
+}
+
+/** Produces React text nodes only; file content is never interpreted as markup. */
+export function highlightCode(text: string, lang: Lang): ReactNode[] {
+  const out: ReactNode[] = [];
+  const classes = ['xml-comment', 'xml-str', 'xml-tag', 'xml-attr'];
+  let last = 0;
+  let k = 0;
+  for (const m of text.matchAll(tokenRe(lang))) {
+    const at = m.index ?? 0;
+    if (at > last) out.push(text.slice(last, at));
+    const g = m.findIndex((v, i) => i > 0 && v !== undefined) - 1;
+    out.push(<span key={k++} className={classes[g]}>{m[0]}</span>);
+    last = at + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
 const XMLISH = /\.(xml|launch|urdf|xacro|sdf|test|xsd|svg)$/i;
 
 export function CodeView({ text, name, label }: { text: string; name: string; label: string }) {
-  const content = useMemo(
-    () => (XMLISH.test(name) && text.length <= HIGHLIGHT_LIMIT ? highlightXml(text) : text),
-    [text, name],
-  );
+  const content = useMemo(() => {
+    if (text.length > HIGHLIGHT_LIMIT) return text;
+    if (XMLISH.test(name)) return highlightXml(text);
+    const lang = langFor(name);
+    return lang ? highlightCode(text, lang) : text;
+  }, [text, name]);
   return (
     <pre
       tabIndex={0}
