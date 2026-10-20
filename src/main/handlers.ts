@@ -20,6 +20,7 @@ export interface Platform {
   writeClipboard(text: string): void;
   showItemInFolder(path: string): void;
   openPath(path: string): Promise<string>;
+  openInVSCode(path: string): Promise<void>;
   openExternal(url: string): Promise<void>;
 }
 
@@ -42,6 +43,7 @@ type FileHandlers = Pick<
   | 'previewFile'
   | 'copyPath'
   | 'showInFolder'
+  | 'openInVSCode'
   | 'openExternal'
   | 'updateManifest'
   | 'getPreferences'
@@ -129,6 +131,12 @@ export function createHandlers(scans: ScanManager, prefs: PreferenceStore, platf
           const err = await platform.openPath(abs);
           if (err) throw new Error(err);
         } else platform.showItemInFolder(abs);
+      }),
+    openInVSCode: (scanId, packageId, relPath) =>
+      action(async () => {
+        const { abs, isRoot } = await resolveTarget(scanId, packageId, relPath);
+        if (isRoot) throw new Error('Select a file to open in VS Code.');
+        await platform.openInVSCode(abs);
       }),
     openExternal: (url) =>
       action(async () => {

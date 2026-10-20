@@ -101,6 +101,7 @@ describe('IPC handlers authorization', () => {
     chooseDirectory: async () => path.join(tmp, 'wsA'),
     writeClipboard: (t) => calls.push(`clip:${t}`),
     showItemInFolder: (p) => calls.push(`show:${p}`),
+    openInVSCode: async (p) => void calls.push(`vscode:${p}`),
     openPath: async (p) => (calls.push(`open:${p}`), ''),
     openExternal: async (u) => void calls.push(`ext:${u}`),
   });

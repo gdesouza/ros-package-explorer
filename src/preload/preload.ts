@@ -17,6 +17,7 @@ const api: ExplorerApi = {
   previewFile: (s, p, r, e) => call('previewFile', s, p, r, e),
   copyPath: (s, p, r) => call('copyPath', s, p, r),
   showInFolder: (s, p, r) => call('showInFolder', s, p, r),
+  openInVSCode: (s, p, r) => call('openInVSCode', s, p, r),
   openExternal: (u) => call('openExternal', u),
   updateManifest: (s, p, e) => call('updateManifest', s, p, e),
   getPreferences: () => call('getPreferences'),

@@ -59,9 +59,14 @@ export function FilesTab({ pkg }: { pkg: PackageRecord }) {
     else setPreview({ state: 'not-file', message: 'Not a regular file.' });
   };
 
-  const act = async (kind: 'copy' | 'show') => {
+  const act = async (kind: 'copy' | 'show' | 'vscode') => {
     const rel = selected?.path ?? '';
-    const r = kind === 'copy' ? await window.explorer.copyPath(scanId, pkg.id, rel) : await window.explorer.showInFolder(scanId, pkg.id, rel);
+    const r =
+      kind === 'copy'
+        ? await window.explorer.copyPath(scanId, pkg.id, rel)
+        : kind === 'vscode'
+          ? await window.explorer.openInVSCode(scanId, pkg.id, rel)
+          : await window.explorer.showInFolder(scanId, pkg.id, rel);
     setActionMsg(r.ok ? (kind === 'copy' ? 'Path copied.' : 'Opened.') : r.message);
   };
 
@@ -113,6 +118,7 @@ export function FilesTab({ pkg }: { pkg: PackageRecord }) {
           <span className="truncate font-mono text-xs text-muted-foreground">{selected ? selected.path : '(package root)'}</span>
           {selected?.size !== undefined && <span className="text-xs text-muted-foreground">{formatBytes(selected.size)}</span>}
           <span className="ml-auto flex gap-2">
+            {selected?.kind === 'file' && <Button onClick={() => void act('vscode')}>Edit on VSCode</Button>}
             <Button onClick={() => void act('copy')}>Copy path</Button>
             <Button onClick={() => void act('show')}>{selected && selected.kind !== 'dir' ? 'Open containing folder' : 'Open folder'}</Button>
           </span>

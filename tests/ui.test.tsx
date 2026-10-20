@@ -34,6 +34,7 @@ function mockApi() {
     previewFile: vi.fn(async () => ({ state: 'text' as const, text: 'hello world', size: 11, mtimeMs: 1, changed: false })),
     copyPath: vi.fn(async () => ({ ok: true as const })),
     showInFolder: vi.fn(async () => ({ ok: true as const })),
+    openInVSCode: vi.fn(async () => ({ ok: true as const })),
     openExternal: vi.fn(async () => ({ ok: true as const })),
     updateManifest: vi.fn(async () => ({ ok: true as const })),
     getPreferences: vi.fn(async () => DEFAULT_PREFS),

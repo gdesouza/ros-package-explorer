@@ -189,6 +189,7 @@ export interface ExplorerApi {
   previewFile(scanId: number, packageId: string, relPath: string, expected?: ExpectedStat): Promise<PreviewResult>;
   copyPath(scanId: number, packageId: string, relPath: string): Promise<ActionResult>;
   showInFolder(scanId: number, packageId: string, relPath: string): Promise<ActionResult>;
+  openInVSCode(scanId: number, packageId: string, relPath: string): Promise<ActionResult>;
   openExternal(url: string): Promise<ActionResult>;
   updateManifest(scanId: number, packageId: string, edit: ManifestEdit): Promise<ActionResult>;
   getPreferences(): Promise<Preferences>;

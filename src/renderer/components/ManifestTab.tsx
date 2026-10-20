@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import type { PackageRecord, PreviewResult } from '../../shared/types';
 import { useApp } from '../lib/context';
 import { PreviewBody } from './CodeView';
-import { Badge, Section } from './ui';
+import { Badge, Button, Section } from './ui';
 
 export function ManifestTab({ pkg }: { pkg: PackageRecord }) {
   const { state } = useApp();
   const scanId = state.scanId!;
   const [content, setContent] = useState<PreviewResult | 'loading'>('loading');
+  const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setContent('loading');
@@ -37,6 +38,17 @@ export function ManifestTab({ pkg }: { pkg: PackageRecord }) {
           </ul>
         )}
       </Section>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={async () => {
+            const r = await window.explorer.openInVSCode(scanId, pkg.id, 'package.xml');
+            setMsg(r.ok ? 'Opened.' : r.message);
+          }}
+        >
+          Edit on VSCode
+        </Button>
+        {msg && <span role="status" className="text-xs text-muted-foreground">{msg}</span>}
+      </div>
       <div className="min-h-0 flex-1">
         <PreviewBody result={content} name="package.xml" onReload={() => void load()} />
       </div>

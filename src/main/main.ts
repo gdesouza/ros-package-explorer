@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { BrowserWindow, app, clipboard, dialog, ipcMain, nativeTheme, session, shell, type IpcMainInvokeEvent } from 'electron';
 import * as path from 'node:path';
 import type { ScanEvent } from '../shared/types';
@@ -65,6 +66,14 @@ function setup() {
     writeClipboard: (t) => clipboard.writeText(t),
     showItemInFolder: (p) => shell.showItemInFolder(p),
     openPath: (p) => shell.openPath(p),
+    openInVSCode: (p) =>
+      new Promise<void>((resolve, reject) => {
+        // No shell: the path is passed as a single argv entry.
+        execFile('code', ['--', p], (err) => {
+          if (!err) return resolve();
+          shell.openExternal(`vscode://file${encodeURI(p)}`).then(resolve, () => reject(new Error('Could not launch VS Code (is the `code` command installed?).')));
+        });
+      }),
     openExternal: (u) => shell.openExternal(u),
   });
 
