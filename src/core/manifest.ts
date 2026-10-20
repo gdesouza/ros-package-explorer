@@ -272,7 +272,7 @@ export function parseManifest(source: string, ctx: ManifestContext): PackageReco
   const people = (tag: string): Person[] =>
     root.children
       .filter((n) => n.tag === tag)
-      .map((n) => ({ name: clean(fullText(n)), email: n.attrs.email }))
+      .map((n, sourceIndex) => ({ name: clean(fullText(n)), email: n.attrs.email, sourceIndex }))
       .filter((p) => p.name || p.email);
   rec.maintainers = people('maintainer');
   rec.authors = people('author');
@@ -283,13 +283,13 @@ export function parseManifest(source: string, ctx: ManifestContext): PackageReco
 
   rec.licenses = root.children
     .filter((n) => n.tag === 'license')
-    .map((n): TextEntry => ({ value: clean(fullText(n)), condition: condition(n) }))
+    .map((n, sourceIndex): TextEntry => ({ value: clean(fullText(n)), condition: condition(n), sourceIndex }))
     .filter((l) => l.value);
   if (rec.licenses.length === 0) diag('validation', 'error', 'At least one <license> is required.');
 
   rec.urls = root.children
     .filter((n) => n.tag === 'url')
-    .map((n): UrlEntry => ({ url: clean(fullText(n)), type: n.attrs.type }))
+    .map((n, sourceIndex): UrlEntry => ({ url: clean(fullText(n)), type: n.attrs.type, sourceIndex }))
     .filter((u) => u.url);
 
   if (format >= 2) {

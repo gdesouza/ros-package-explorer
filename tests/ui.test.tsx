@@ -35,6 +35,7 @@ function mockApi() {
     copyPath: vi.fn(async () => ({ ok: true as const })),
     showInFolder: vi.fn(async () => ({ ok: true as const })),
     openExternal: vi.fn(async () => ({ ok: true as const })),
+    updateManifest: vi.fn(async () => ({ ok: true as const })),
     getPreferences: vi.fn(async () => DEFAULT_PREFS),
     setPreferences: vi.fn(async (p) => ({ ...DEFAULT_PREFS, ...p })),
     removeRecent: vi.fn(async () => DEFAULT_PREFS),
@@ -102,5 +103,28 @@ describe('renderer smoke path', () => {
     fireEvent.click(await within(list).findByText('src/bad', { selector: 'span.truncate.font-medium' }));
     expect(screen.getByRole('heading', { name: 'src/bad' })).toBeTruthy();
     expect(screen.getByText(/could not be interpreted/)).toBeTruthy();
+  });
+});
+
+describe('inline metadata editing', () => {
+  it('edits a field through the pencil and reports failures', async () => {
+    render(<App />);
+    fireEvent.click(screen.getAllByRole('button', { name: /Open workspace/ })[0]);
+    const list = await screen.findByRole('listbox', { name: 'Packages' });
+    await waitFor(() => expect(within(list).getAllByRole('option')).toHaveLength(3));
+    fireEvent.click(within(list).getByText('alpha'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit version' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'version' }), { target: { value: '1.2.3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(window.explorer.updateManifest).toHaveBeenCalledWith(1, 'src/alpha/package.xml', { tag: 'version', index: 0, text: '1.2.3' }));
+
+    vi.mocked(window.explorer.updateManifest).mockResolvedValueOnce({ ok: false, message: 'nope' });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit maintainer' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'maintainer email' }), { target: { value: 'x@y.z' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('nope');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('textbox', { name: 'maintainer' })).toBeNull();
   });
 });

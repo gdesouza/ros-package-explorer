@@ -55,8 +55,10 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'scan-event': {
       const e = action.event;
       if (e.type === 'started') {
-        // A new workspace or refresh: nothing from the previous scan may survive.
-        return { ...initialState, scanId: e.scanId, root: e.root, scan: 'scanning', tab: state.tab };
+        // A new workspace or refresh: nothing from the previous scan may survive,
+        // except the selection when the same workspace is rescanned.
+        const keep = e.root === state.root ? { selectedId: state.selectedId, history: state.history, historyPos: state.historyPos } : {};
+        return { ...initialState, ...keep, scanId: e.scanId, root: e.root, scan: 'scanning', tab: state.tab };
       }
       if (e.scanId !== state.scanId) return state;
       switch (e.type) {

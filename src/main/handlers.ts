@@ -1,3 +1,5 @@
+import * as fsp from 'node:fs/promises';
+import * as path from 'node:path';
 import type {
   ActionResult,
   DirListing,
@@ -6,6 +8,8 @@ import type {
   PreviewResult,
   WorkspaceInfo,
 } from '../shared/types';
+import { applyManifestEdit } from '../core/manifestEdit';
+import { parseManifest } from '../core/manifest';
 import { listDirectory, readPreview } from '../core/files';
 import { PathDenied, resolveWithin } from '../core/pathGuard';
 import { StaleScanError, type ScanManager } from './scanManager';
@@ -39,6 +43,7 @@ type FileHandlers = Pick<
   | 'copyPath'
   | 'showInFolder'
   | 'openExternal'
+  | 'updateManifest'
   | 'getPreferences'
   | 'setPreferences'
   | 'removeRecent'
@@ -135,6 +140,31 @@ export function createHandlers(scans: ScanManager, prefs: PreferenceStore, platf
         }
         if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('Only http and https links can be opened.');
         await platform.openExternal(parsed.toString());
+      }),
+    updateManifest: (scanId, packageId, edit) =>
+      action(async () => {
+        if (!isId(scanId) || !isStr(packageId) || !edit || typeof edit !== 'object') throw new PathDenied('Invalid request.');
+        const pkg = scans.lookup(scanId, packageId);
+        const abs = await resolveWithin(pkg.packageDir, 'package.xml');
+        const before = await readPreview(pkg.packageDir, 'package.xml');
+        if (before.state !== 'text') throw new Error('The manifest cannot be edited because it is not readable text.');
+        const { tag, index, text, email } = edit;
+        const next = applyManifestEdit(before.text, { tag, index, text, email });
+        const ctx = { id: packageId, manifestPath: abs, packageDir: pkg.packageDir, relativeDir: '', ignoredByCatkin: false };
+        if (parseManifest(next, ctx).diagnostics.some((d) => d.category === 'parse' && d.severity === 'error')) {
+          throw new Error('The edit would produce an invalid manifest and was not saved.');
+        }
+        const st = await fsp.stat(abs);
+        if (st.size !== before.size || st.mtimeMs !== before.mtimeMs) throw new Error('The manifest changed on disk; refresh and try again.');
+        const tmp = path.join(pkg.packageDir, `.package.xml.${process.pid}.${Date.now()}.tmp`);
+        try {
+          await fsp.writeFile(tmp, next, { mode: st.mode & 0o777, flag: 'wx' });
+          await fsp.rename(tmp, abs);
+        } catch (e) {
+          await fsp.rm(tmp, { force: true });
+          throw e;
+        }
+        await scans.refresh();
       }),
     getPreferences: () => prefs.get(),
     async setPreferences(patch) {

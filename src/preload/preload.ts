@@ -18,6 +18,7 @@ const api: ExplorerApi = {
   copyPath: (s, p, r) => call('copyPath', s, p, r),
   showInFolder: (s, p, r) => call('showInFolder', s, p, r),
   openExternal: (u) => call('openExternal', u),
+  updateManifest: (s, p, e) => call('updateManifest', s, p, e),
   getPreferences: () => call('getPreferences'),
   setPreferences: (patch) => call('setPreferences', patch),
   removeRecent: (p) => call('removeRecent', p),

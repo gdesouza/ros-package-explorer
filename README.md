@@ -1,7 +1,10 @@
 # ROS Package Explorer
 
-A read-only Linux desktop app for exploring ROS packages in a local folder: metadata,
-declared dependencies (with reverse dependencies), and package files. It works fully
+A Linux desktop app for exploring ROS packages in a local folder: metadata,
+declared dependencies (with reverse dependencies), and package files. Files are only
+ever written when you edit package metadata inline (pencil icon on the Overview tab:
+description, version, maintainers, authors, licenses, URLs); only the changed element
+in `package.xml` is rewritten. It works fully
 offline and needs no ROS installation, ROS master, sourced workspace, or build.
 
 Stack: Electron + React + TypeScript + Tailwind CSS, scanning in a Node `worker_threads`

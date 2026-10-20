@@ -43,19 +43,23 @@ export interface XmlNode {
   children: XmlNode[];
 }
 
+/** `sourceIndex` is the entry's position among same-tag elements in the manifest, used for editing. */
 export interface Person {
   name: string;
   email?: string;
+  sourceIndex: number;
 }
 
 export interface UrlEntry {
   url: string;
   type?: string;
+  sourceIndex: number;
 }
 
 export interface TextEntry {
   value: string;
   condition?: string;
+  sourceIndex: number;
 }
 
 export interface PackageRecord {
@@ -164,6 +168,15 @@ export interface ExpectedStat {
   mtimeMs: number;
 }
 
+export interface ManifestEdit {
+  tag: 'version' | 'description' | 'maintainer' | 'author' | 'license' | 'url';
+  /** Position among the manifest's direct children with this tag; one past the end appends. */
+  index: number;
+  text: string;
+  /** Only for maintainer and author; an empty string removes the attribute. */
+  email?: string;
+}
+
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
 export interface ExplorerApi {
@@ -177,6 +190,7 @@ export interface ExplorerApi {
   copyPath(scanId: number, packageId: string, relPath: string): Promise<ActionResult>;
   showInFolder(scanId: number, packageId: string, relPath: string): Promise<ActionResult>;
   openExternal(url: string): Promise<ActionResult>;
+  updateManifest(scanId: number, packageId: string, edit: ManifestEdit): Promise<ActionResult>;
   getPreferences(): Promise<Preferences>;
   setPreferences(patch: Partial<Omit<Preferences, 'recentWorkspaces'>>): Promise<Preferences>;
   removeRecent(path: string): Promise<Preferences>;

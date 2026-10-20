@@ -135,6 +135,26 @@ describe('IPC handlers authorization', () => {
     m.dispose();
   });
 
+  it('edits a manifest on disk, rescans, and refuses invalid requests', async () => {
+    const events: ScanEvent[] = [];
+    const m = new ScanManager(workerPath, (e) => events.push(e));
+    const h = createHandlers(m, new PreferenceStore(path.join(tmp, 'prefs3', 'p.json')), platform([]));
+    const info = (await h.openWorkspace())!;
+    await until(events, (e) => e.type === 'finished');
+    const file = path.join(tmp, 'wsA/p0/package.xml');
+
+    expect(await h.updateManifest(info.scanId, 'p0/package.xml', { tag: 'version', index: 0, text: '2.0.0' })).toEqual({ ok: true });
+    expect(fs.readFileSync(file, 'utf8')).toContain('<version>2.0.0</version>');
+    expect(fs.readdirSync(path.dirname(file))).toEqual(['package.xml']);
+    await until(events, (e) => e.type === 'finished' && e.scanId === info.scanId + 1);
+
+    expect(await h.updateManifest(info.scanId, 'p0/package.xml', { tag: 'version', index: 0, text: '3.0.0' })).toMatchObject({ ok: false });
+    const cur = info.scanId + 1;
+    expect(await h.updateManifest(cur, 'p0/package.xml', { tag: 'name' as 'url', index: 0, text: 'x' })).toMatchObject({ ok: false });
+    expect(await h.updateManifest(cur, '../x', { tag: 'version', index: 0, text: '3.0.0' })).toMatchObject({ ok: false });
+    m.dispose();
+  });
+
   it('persists recents without scanning, and removes them', async () => {
     const file = path.join(tmp, 'prefs2', 'p.json');
     const p1 = new PreferenceStore(file);

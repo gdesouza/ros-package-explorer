@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseManifest } from '../src/core/manifest';
+import { applyManifestEdit } from '../src/core/manifestEdit';
 
 const ctx = { id: 'a/package.xml', manifestPath: '/ws/a/package.xml', packageDir: '/ws/a', relativeDir: 'a', ignoredByCatkin: false };
 
@@ -67,7 +68,7 @@ describe('parseManifest', () => {
     expect(r.maintainers).toHaveLength(2);
     expect(r.authors).toHaveLength(2);
     expect(r.licenses.map((l) => l.value)).toEqual(['BSD', 'MIT']);
-    expect(r.urls).toEqual([{ url: 'https://r', type: 'repository' }, { url: 'https://w', type: undefined }]);
+    expect(r.urls).toEqual([{ url: 'https://r', type: 'repository', sourceIndex: 0 }, { url: 'https://w', type: undefined, sourceIndex: 1 }]);
   });
 
   it('reports missing required metadata as invalid without inventing values', () => {
@@ -123,5 +124,28 @@ describe('parseManifest', () => {
   it('does not misread prototype keys as dependency tags', () => {
     const r = parseManifest(base('format="2"', '<constructor>x</constructor>'), ctx);
     expect(r.deps).toHaveLength(0);
+  });
+});
+
+describe('applyManifestEdit', () => {
+  const src = `<?xml version="1.0"?>\n<package format="2">\n  <!-- <version>9</version> -->\n  <name>a</name>\n  <version>0.1.0</version>\n  <description/>\n  <maintainer email="a@b.c">M</maintainer>\n  <license>MIT</license>\n</package>\n`;
+
+  it('changes only the targeted element', () => {
+    const out = applyManifestEdit(src, { tag: 'version', index: 0, text: '1.0.0' });
+    expect(out).toBe(src.replace('<version>0.1.0', '<version>1.0.0'));
+  });
+  it('escapes text, fills self-closing elements and updates email attributes', () => {
+    let out = applyManifestEdit(src, { tag: 'description', index: 0, text: 'a < b & c' });
+    expect(out).toContain('<description>a &lt; b &amp; c</description>');
+    out = applyManifestEdit(out, { tag: 'maintainer', index: 0, text: 'N', email: 'n@x.y' });
+    expect(out).toContain('<maintainer email="n@x.y">N</maintainer>');
+    expect(parseManifest(out, ctx).description).toBe('a < b & c');
+  });
+  it('appends new elements and rejects bad requests', () => {
+    const out = applyManifestEdit(src, { tag: 'license', index: 1, text: 'BSD' });
+    expect(out).toContain('  <license>MIT</license>\n  <license>BSD</license>\n</package>');
+    expect(() => applyManifestEdit(src, { tag: 'license', index: 5, text: 'x' })).toThrow();
+    expect(() => applyManifestEdit(src, { tag: 'name' as 'url', index: 0, text: 'x' })).toThrow();
+    expect(() => applyManifestEdit(src, { tag: 'version', index: 0, text: ' ' })).toThrow();
   });
 });
